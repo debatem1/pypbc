@@ -1,5 +1,9 @@
 This package requires installation of GMP and PBC. 
 
+-----------
+Install GMP
+-----------
+
 Most systems include a package for GMP (https://gmplib.org/). To install
 from package source see the GMP site. 
 
@@ -14,6 +18,10 @@ For an RPM installation with YUM:
 For installation with Fink (http://www.finkproject.org/) on Mac OS X:
 
 	sudo fink install gmp gmp-shlibs
+
+-----------
+Install PBC
+-----------
 
 To install the PBC library, download the appropriate files for your system
 from https://crypto.stanford.edu/pbc/download.html. PBC has three
@@ -37,3 +45,13 @@ Ubuntu:
 After installing, you may need to rebuild the search path for libraries:
 
 	sudo ldconfig
+
+-------------
+Install pypbc
+-------------
+
+Once GMP and PBC are installed, installing pypbc via pip (for Python v3)
+is simple:
+
+	sudo pip3 install .
+
