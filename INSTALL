@@ -29,6 +29,7 @@ System. Pypbc requires PBC is configured as a shared library and in the
 standard library search path. For example, to install PBC in Debian /
 Ubuntu:
 
+    sh setup
 	./configure --prefix=/usr --enable-shared
 	make
 	sudo make install
