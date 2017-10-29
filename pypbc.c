@@ -1,4 +1,5 @@
 #include "pypbc.h"
+#include <stdio.h>
 
 /*******************************************************************************
 pypbc.c
@@ -210,6 +211,24 @@ int Parameters_init(Parameters *self, PyObject *args, PyObject *kwargs) {
 	return 0;
 }
 
+// Parameters(param_string=str, n=long, qbits=long, rbits=long, short=True/False) -> Parameters
+PyObject* Parameters_str(Parameters *parameters) {
+	FILE *fp;
+	// int size;
+	// build the string buffer- AIEEE! MAGIC CONSTANT!
+	char buffer[4096];
+	// PBC wants to write parameters to a FILE, so we make one
+	fp = fmemopen((void *)buffer, sizeof(buffer), "w+");
+	// write pairing params into buffer
+	if (fp != NULL) {
+		pbc_param_out_str(fp, parameters->pbc_params);
+		fclose(fp);
+		return PyUnicode_FromString(buffer);
+	} else {
+		return PyUnicode_FromString("");
+	}
+}
+
 // deallocates the object when done
 void Parameters_dealloc(Parameters *parameters) {
 	// kill the Parameters
@@ -238,13 +257,13 @@ PyTypeObject ParametersType = {
 	0,                         /*tp_getattr*/
 	0,                         /*tp_setattr*/
 	0,                         /*tp_compare*/
-	0,                         /*tp_repr*/
+	Parameters_str,                         /*tp_repr*/
 	0,                         /*tp_as_number*/
 	0,                         /*tp_as_sequence*/
 	0,                         /*tp_as_mapping*/
 	0,                         /*tp_hash */
 	0,                         /*tp_call*/
-	0,                         /*tp_str*/
+	Parameters_str,                         /*tp_str*/
 	0,                         /*tp_getattro*/
 	0,                         /*tp_setattro*/
 	0,                         /*tp_as_buffer*/

@@ -8,7 +8,7 @@ pbc = Extension(	"pypbc",
 			)
 
 setup(	name="pypbc",
-		version="0.0",
+		version="0.1",
 		description="a simple set of bindings to PBC's interface.",
 		author="Geremy Condra",
 		author_email="debatem1@gmail.com",
