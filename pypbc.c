@@ -755,27 +755,32 @@ PyObject *Element_str(PyObject *element) {
 	// extract the internal element
 	Element *py_ele = (Element*)element;
 	PyObject *result = NULL;
-	int size = 0;
+	int ii, jj, pad, size = 0;
+	// int ii = 0;
 	// build the string buffer- AIEEE! MAGIC CONSTANT!
 	unsigned char string[4096];
-	// use the arguments to init the element
+	unsigned char hex_value[4096];
+	// query the element dimension
+	int dim = element_item_count(py_ele->pbc_element);
 	switch(py_ele->group) {
 		case G1:
 		case G2:
+			// printf("G1/G2 point dimension %d\n", element_item_count(py_ele->pbc_element));
 			if (element_is0(py_ele->pbc_element) == 1) {
-				int ii;
 				size = (2 * element_length_in_bytes_compressed(py_ele->pbc_element)) - 1;
 				for (ii = 0; ii < size; ii++) {
 					string[ii] = 0x00 ;
 				}
-				break;
 			} else {
 				if (0) {
 					size = element_to_bytes_compressed(&string[1], py_ele->pbc_element);
 					string[0] = 0x02 | string[size];
 					string[size] = 0;
-					break;
 				} else {
+					if (dim != 2) {
+						PyErr_SetString(PyExc_ValueError, "Invalid Elliptic Curve Point Dimension.");
+						return NULL;
+					}
 					element_ptr ex, ey;
 					string[0] = 0x04;
 					size = 1;
@@ -784,27 +789,43 @@ PyObject *Element_str(PyObject *element) {
 					size += element_to_bytes(&string[size], ex);
 					size += element_to_bytes(&string[size], ey);
 					string[size] = 0;
-					break;
 				}
 			}
+			for (ii = 0 ; ii < size; ii++) {
+				sprintf(&hex_value[2*ii], "%02X", string[ii]);
+			}
+			return PyUnicode_FromStringAndSize(hex_value, size * 2);
 		case GT:
-			size = element_to_bytes(string, py_ele->pbc_element);
-			break;
+			// printf("GT vector dimension %d\n", dim);
+			size = 0;
+			sprintf(&hex_value[0], "(0x");
+			pad = 3;
+			for (ii = 0; ii < dim; ii++) {
+				size = element_to_bytes(string, element_item(py_ele->pbc_element, ii));
+				if (ii != 0 ) {
+					sprintf(&hex_value[pad], ", 0x") ;
+					pad += 4;
+				}
+				for (jj = 0 ; jj < size; jj++) {
+					sprintf(&hex_value[(2*jj)+pad], "%02X", string[jj]);
+				}
+				pad += 2*size;
+			}
+			sprintf(&hex_value[pad],")");
+			return PyUnicode_FromStringAndSize(hex_value, pad + 1);
 		case Zr:
+			// printf("Zr vector dimension %d\n", dim);
 			size = element_to_bytes(string, py_ele->pbc_element);
-			break;
+			sprintf(&hex_value[0], "0x");
+			for (ii = 0 ; ii < size; ii++) {
+				sprintf(&hex_value[2*(ii+1)], "%02X", string[ii]);
+			}
+			return PyUnicode_FromStringAndSize(hex_value, (size+1) * 2);
 		default:
-			PyErr_SetString(PyExc_ValueError, "Invalid group.");
-			return NULL;
+			break;
 	}
-	int i;
-	unsigned char hex_value[4096];
-	sprintf(hex_value, "%02X", string[0]);
-	for (i = 1 ; i < size; i++) {
-		sprintf(&hex_value[2*i], "%02X", string[i]);
-	}
-	// turn it into a Python object
-	return PyUnicode_FromStringAndSize(hex_value, size * 2);
+	PyErr_SetString(PyExc_ValueError, "Invalid group.");
+	return NULL;
 }
 
 // adds two elements together
