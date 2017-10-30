@@ -754,12 +754,53 @@ void Element_dealloc(Element *element) {
 PyObject *Element_str(PyObject *element) {
 	// extract the internal element
 	Element *py_ele = (Element*)element;
+	PyObject *result = NULL;
+	int size = 0;
 	// build the string buffer- AIEEE! MAGIC CONSTANT!
-	char string[1024];
-	// fill it
-	int size = element_snprintf(string, 1024, "%B", py_ele->pbc_element);
+	unsigned char string[4096];
+	// use the arguments to init the element
+	switch(py_ele->group) {
+		case G1:
+		case G2:
+			if (0) {
+				size = element_to_bytes_compressed(&string[1], py_ele->pbc_element);
+				string[0] = 0x02 | string[size];
+				string[size] = 0;
+				break;
+			} else {
+				element_ptr ex, ey;
+				string[0] = 0x04;
+				size = 1;
+				ex = element_item(py_ele->pbc_element, 0);
+				ey = element_item(py_ele->pbc_element, 1);
+				size += element_to_bytes(&string[size], ex);
+				size += element_to_bytes(&string[size], ey);
+				string[size] = 0;
+				break;
+			}
+		//case G2:
+		//	size = element_to_bytes_compressed(&string[1], py_ele->pbc_element);
+		//	string[0] = 0x02 | string[size];
+		//	string[size] = 0;
+		//	break;
+		case GT:
+			size = element_to_bytes(string, py_ele->pbc_element);
+			break;
+		case Zr:
+			size = element_to_bytes(string, py_ele->pbc_element);
+			break;
+		default:
+			PyErr_SetString(PyExc_ValueError, "Invalid group.");
+			return NULL;
+	}
+	int i;
+	unsigned char hex_value[4096];
+	sprintf(hex_value, "%02X", string[0]);
+	for (i = 1 ; i < size; i++) {
+		sprintf(&hex_value[2*i], "%02X", string[i]);
+	}
 	// turn it into a Python object
-	return PyUnicode_FromStringAndSize(string, size);
+	return PyUnicode_FromStringAndSize(hex_value, size * 2);
 }
 
 // adds two elements together
