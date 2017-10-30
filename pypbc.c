@@ -762,27 +762,31 @@ PyObject *Element_str(PyObject *element) {
 	switch(py_ele->group) {
 		case G1:
 		case G2:
-			if (0) {
-				size = element_to_bytes_compressed(&string[1], py_ele->pbc_element);
-				string[0] = 0x02 | string[size];
-				string[size] = 0;
+			if (element_is0(py_ele->pbc_element) == 1) {
+				int ii;
+				size = (2 * element_length_in_bytes_compressed(py_ele->pbc_element)) - 1;
+				for (ii = 0; ii < size; ii++) {
+					string[ii] = 0x00 ;
+				}
 				break;
 			} else {
-				element_ptr ex, ey;
-				string[0] = 0x04;
-				size = 1;
-				ex = element_item(py_ele->pbc_element, 0);
-				ey = element_item(py_ele->pbc_element, 1);
-				size += element_to_bytes(&string[size], ex);
-				size += element_to_bytes(&string[size], ey);
-				string[size] = 0;
-				break;
+				if (0) {
+					size = element_to_bytes_compressed(&string[1], py_ele->pbc_element);
+					string[0] = 0x02 | string[size];
+					string[size] = 0;
+					break;
+				} else {
+					element_ptr ex, ey;
+					string[0] = 0x04;
+					size = 1;
+					ex = element_item(py_ele->pbc_element, 0);
+					ey = element_item(py_ele->pbc_element, 1);
+					size += element_to_bytes(&string[size], ex);
+					size += element_to_bytes(&string[size], ey);
+					string[size] = 0;
+					break;
+				}
 			}
-		//case G2:
-		//	size = element_to_bytes_compressed(&string[1], py_ele->pbc_element);
-		//	string[0] = 0x02 | string[size];
-		//	string[size] = 0;
-		//	break;
 		case GT:
 			size = element_to_bytes(string, py_ele->pbc_element);
 			break;
