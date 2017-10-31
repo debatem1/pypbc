@@ -4,12 +4,18 @@
 /*******************************************************************************
 pypbc.c
 
-Written by Geremy Condra
+Modifications by Joseph deBlaquiere
+Copyright (c) 2017
+
+Originally written by Geremy Condra
 Licensed under GPLv3
 Released 11 October 2009
 
 This file contains the types and functions needed to use PBC from Python3.
 *******************************************************************************/
+
+long PBC_EC_Compressed = (1);
+
 PyDoc_STRVAR(pynum_to_mpz__doc__, 
 	"Converts a Python long type to a GMP MPZ type");
 void pynum_to_mpz(PyObject *n, mpz_t new_n) {
@@ -36,6 +42,20 @@ PyObject *mpz_to_pynum(mpz_t n) {
 	
 	// return it
 	return l;
+}
+
+PyDoc_STRVAR(set_point_format_compressed__doc__,
+	"Set option to use compressed (sign + X) point format.");
+PyObject *set_point_format_compressed(PyObject *self, PyObject *args) {
+	PBC_EC_Compressed = 1;
+	return PyLong_FromLong(PBC_EC_Compressed);
+}
+
+PyDoc_STRVAR(set_point_format_uncompressed__doc__,
+	"Set option to use uncompressed (X,Y) point format.");
+PyObject *set_point_format_uncompressed(PyObject *self, PyObject *args) {
+	PBC_EC_Compressed = 0;
+	return PyLong_FromLong(PBC_EC_Compressed);
 }
 
 PyDoc_STRVAR(get_random_prime__doc__,
@@ -487,6 +507,7 @@ int Element_init(PyObject *py_self, PyObject *args, PyObject *kwargs) {
 	// required arguments are the pairing and the group
 	PyObject *pypairing;
 	enum Group group;
+	int ii;
 	// optional value argument
 	PyObject *value = NULL;
 	char *keys[] = {"pairing", "group", "value", NULL};
@@ -538,9 +559,51 @@ int Element_init(PyObject *py_self, PyObject *args, PyObject *kwargs) {
 			Element *e = (Element*)value;
 			element_set(self->pbc_element, e->pbc_element);
 		} else {
-			// unrecognized type, fail hard
-			PyErr_SetString(PyExc_TypeError, "invalid type for argument 'value'");
-			return -1;
+			int bytesize;
+			char *str;
+			Py_ssize_t s_str;
+			str = PyUnicode_AsUTF8AndSize(value, &s_str);
+			if (str != NULL) {
+				unsigned char byteval[4096];
+				// printf("parsing string for value \"%s\"\n", string);
+				// value is a string, see if encoded EC Point or Fp2 tuple
+				if (strncmp(str, "(", 1) == 0) {
+					// Fp2 tuple? (x0, x1)
+					// unhandled type, fail hard
+					PyErr_SetString(PyExc_TypeError, "invalid type for argument 'value'");
+					return -1;
+				} else if (strncmp(str, "00", 2) == 0) {
+					// assume EC Point at infinity
+					element_set0(self->pbc_element);
+					self->ready = 1;
+					return 0;
+				} else if (strncmp(str, "02", 2) == 0) {
+					// even EC Point?
+					// printf("even, compressed EC Point\n");
+					bytesize = (s_str >> 1) - 1;
+					byteval[bytesize] = 0x00;
+				} else if (strncmp(str, "03", 2) == 0) {
+					// odd EC Point?
+					// printf("odd, compressed EC Point\n");
+					bytesize = (s_str >> 1) - 1;
+					byteval[bytesize] = 0x01;
+				} else if (strncmp(str, "04", 2) == 0) {
+					// uncompressed EC Point?
+					// printf("uncompressed EC Point"\n);
+					bytesize = ((s_str >> 1) - 1) >> 1;
+					sscanf(&str[s_str - 1], "%2hhx", &byteval[bytesize]);
+					byteval[bytesize] &= 0x01;
+				}
+				for (ii = 0 ; ii < bytesize ; ii++ ) {
+					sscanf(&str[2+(2*ii)], "%2hhx", &byteval[ii]);
+				}
+				ii = element_from_bytes_compressed(self->pbc_element, byteval);
+				// printf("element_from_bytes_compressed returned %d\n", ii);
+			} else {
+				// unrecognized type, fail hard
+				PyErr_SetString(PyExc_TypeError, "invalid type for argument 'value'");
+				return -1;
+			}
 		}
 	} else {
 		element_set0(self->pbc_element);
@@ -772,7 +835,7 @@ PyObject *Element_str(PyObject *element) {
 					string[ii] = 0x00 ;
 				}
 			} else {
-				if (0) {
+				if (PBC_EC_Compressed) {
 					size = element_to_bytes_compressed(&string[1], py_ele->pbc_element);
 					string[0] = 0x02 | string[size];
 					string[size] = 0;
@@ -792,33 +855,33 @@ PyObject *Element_str(PyObject *element) {
 				}
 			}
 			for (ii = 0 ; ii < size; ii++) {
-				sprintf(&hex_value[2*ii], "%02X", string[ii]);
+				sprintf((char *)&hex_value[2*ii], "%02X", string[ii]);
 			}
 			return PyUnicode_FromStringAndSize(hex_value, size * 2);
 		case GT:
 			// printf("GT vector dimension %d\n", dim);
 			size = 0;
-			sprintf(&hex_value[0], "(0x");
+			sprintf((char *)&hex_value[0], "(0x");
 			pad = 3;
 			for (ii = 0; ii < dim; ii++) {
 				size = element_to_bytes(string, element_item(py_ele->pbc_element, ii));
 				if (ii != 0 ) {
-					sprintf(&hex_value[pad], ", 0x") ;
+					sprintf((char *)&hex_value[pad], ", 0x") ;
 					pad += 4;
 				}
 				for (jj = 0 ; jj < size; jj++) {
-					sprintf(&hex_value[(2*jj)+pad], "%02X", string[jj]);
+					sprintf((char *)&hex_value[(2*jj)+pad], "%02X", string[jj]);
 				}
 				pad += 2*size;
 			}
-			sprintf(&hex_value[pad],")");
+			sprintf((char *)&hex_value[pad],")");
 			return PyUnicode_FromStringAndSize(hex_value, pad + 1);
 		case Zr:
 			// printf("Zr vector dimension %d\n", dim);
 			size = element_to_bytes(string, py_ele->pbc_element);
-			sprintf(&hex_value[0], "0x");
+			sprintf((char *)&hex_value[0], "0x");
 			for (ii = 0 ; ii < size; ii++) {
-				sprintf(&hex_value[2*(ii+1)], "%02X", string[ii]);
+				sprintf((char *)&hex_value[2*(ii+1)], "%02X", string[ii]);
 			}
 			return PyUnicode_FromStringAndSize(hex_value, (size+1) * 2);
 		default:
@@ -1066,21 +1129,27 @@ PyObject *Element_cmp(PyObject *a, PyObject *b, int op) {
 	// it's safe, cast it to an element
 	Element *e1 = (Element*)a;
 	
+	// opcheck- only == and != are defined
+	if(op != Py_EQ && op != Py_NE) {
+		PyErr_SetString(PyExc_TypeError, "Invalid comparison between objects.");
+		return NULL;
+	}
+	
 	// type-and-value check b
 	if (!PyObject_TypeCheck(b, &ElementType)) {
 		if (PyLong_Check(b)) {
 			size_t i = PyNumber_AsSsize_t(b, NULL);
 			if (i == 1) {
 				if(element_is1(e1->pbc_element)) {
-					return Py_True;
+					if (op == Py_EQ) Py_RETURN_TRUE; else Py_RETURN_FALSE;
 				} else {
-					return Py_False;
+					if (op == Py_EQ) Py_RETURN_FALSE; else Py_RETURN_TRUE;
 				}
 			} else if (i == 0) {
 				if(element_is0(e1->pbc_element)) {
-					return Py_True;
+					if (op == Py_EQ) Py_RETURN_TRUE; else Py_RETURN_FALSE;
 				} else {
-					return Py_False;
+					if (op == Py_EQ) Py_RETURN_FALSE; else Py_RETURN_TRUE;
 				}
 			}
 		}
@@ -1088,19 +1157,13 @@ PyObject *Element_cmp(PyObject *a, PyObject *b, int op) {
 		return NULL;
 	}
 	
-	// opcheck- only == and != are defined
-	if(op != Py_EQ && op != Py_NE) {
-		PyErr_SetString(PyExc_TypeError, "Invalid comparison between objects.");
-		return NULL;
-	}
-	
 	// cast b to element
 	Element *e2 = (Element*)b;
 	// perform the comparison
 	if(!element_cmp(e1->pbc_element, e2->pbc_element)) {
-		return Py_True;
+		if (op == Py_EQ) Py_RETURN_TRUE; else Py_RETURN_FALSE;
 	} else {
-		return Py_False;
+		if (op == Py_EQ) Py_RETURN_FALSE; else Py_RETURN_TRUE;
 	}
 }
 
@@ -1203,6 +1266,8 @@ PyTypeObject ElementType = {
 PyMethodDef pypbc_methods[] = {
 	{"get_random_prime", get_random_prime, METH_VARARGS, "get a random n-bit prime"},
 	{"get_random", get_random, METH_VARARGS, "get a random value less than n"},
+	{"set_point_format_compressed", set_point_format_compressed, METH_NOARGS, "Set option to use compressed (sign + X) point format"},
+	{"set_point_format_uncompressed", set_point_format_uncompressed, METH_NOARGS, "Set option to use uncompressed (X,Y) point format"},
 	{NULL, NULL, 0, NULL}
 };
 
