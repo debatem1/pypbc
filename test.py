@@ -117,10 +117,10 @@ class TestElement(unittest.TestCase):
 			print(self.e6)
 		except Exception:
 			self.fail("Could not instantiate element")
-	
+	 
 	def test_str(self):
 		self.e5 = Element(self.pairing, Zr, value=3559)
-		self.failUnlessEqual("3559", str(self.e5))
+		self.assertEqual("3559", str(self.e5))
 
 	def test_bad_init(self):
 		self.assertRaises(TypeError, Element)
@@ -137,20 +137,20 @@ class TestElement(unittest.TestCase):
 		self.e1 = Element(self.pairing, Zr, value=3)
 		self.e2 = Element(self.pairing, Zr, value=5)
 		self.e3 = self.e1 + self.e2
-		self.failUnlessEqual(str(self.e3), "8")
+		self.assertEqual(str(self.e3), "8")
 		self.e4 = self.e1 + self.e3
 		
 	def test_sub(self):
 		self.e1 = Element(self.pairing, Zr, value=3)
 		self.e2 = Element(self.pairing, Zr, value=5)
 		self.e3 = self.e2 - self.e1
-		self.failUnlessEqual(str(self.e3), "2")
+		self.assertEqual(str(self.e3), "2")
 		
 	def test_mult(self):
 		self.e1 = Element(self.pairing, Zr, value=3)
 		self.e2 = Element(self.pairing, Zr, value=5)
 		self.e3 = self.e1 * self.e2
-		self.failUnlessEqual(str(self.e3), "15")
+		self.assertEqual(str(self.e3), "15")
 		try: self.e3 * 5
 		except: self.fail()
 		self.e4 = self.pairing.apply(Element.random(self.pairing, G1), Element.random(self.pairing, G2))
@@ -162,7 +162,7 @@ class TestElement(unittest.TestCase):
 		self.e1 = Element(self.pairing, Zr, value=3)
 		self.e2 = Element(self.pairing, Zr, value=2)
 		self.e3 = pow(self.e1, self.e2)
-		self.failUnlessEqual(str(self.e3), "9")
+		self.assertEqual(str(self.e3), "9")
 		try: 
 			self.e1**(1,2)
 			self.fail()
@@ -172,19 +172,19 @@ class TestElement(unittest.TestCase):
 	def test_cmp(self):
 		self.e1 = Element.random(self.pairing, G1)
 		self.e2 = Element.random(self.pairing, G1)
-		self.failUnlessEqual(self.e1 == self.e2, False)
+		self.assertEqual(self.e1 == self.e2, False)
 		self.e3 = Element(self.pairing, Zr, value=36)
 		self.e4 = Element(self.pairing, Zr, value=36)
-		self.failUnlessEqual(self.e3, self.e4)
+		self.assertEqual(self.e3, self.e4)
 		self.e5 = Element.zero(self.pairing, G1);
 		self.e6 = Element.one(self.pairing, Zr);
-		self.failUnlessEqual(self.e5 == 0, True)
-		self.failUnlessEqual(self.e5 == 1, True)
-		self.failUnlessEqual(self.e6 == 0, False)
-		self.failUnlessEqual(self.e6 == 1, True)
+		self.assertEqual(self.e5 == 0, True)
+		self.assertEqual(self.e5 == 1, True)
+		self.assertEqual(self.e6 == 0, False)
+		self.assertEqual(self.e6 == 1, True)
 		self.e7 = Element.random(self.pairing, G2)
-		self.failUnlessEqual(self.e7 == 0, False)
-		self.failUnlessEqual(self.e7 == 1, False)		
+		self.assertEqual(self.e7 == 0, False)
+		self.assertEqual(self.e7 == 1, False)		
 		try:
 			self.e5 < self.e6
 			self.fail()
@@ -250,14 +250,14 @@ class TestElement(unittest.TestCase):
 		temp1 = pairing.apply(signature, g)
 
 		# compare
-		self.failUnlessEqual(temp1 == temp2, True)
+		self.assertEqual(temp1 == temp2, True)
 
 		# compare to random signature
 		rnd = Element.random(pairing, G1)
 		temp1 = pairing.apply(rnd, g)
 
 		# compare
-		self.failUnlessEqual(temp1 == temp2, False)
+		self.assertEqual(temp1 == temp2, False)
 		
 	def test_auth(self):
 		# taken from paul miller's PBC::Crypt module tutorial
@@ -274,11 +274,52 @@ class TestElement(unittest.TestCase):
 		d_1 = Q_1**s
 		k_01_a = pairing.apply(Q_0, d_1)
 		k_01_b = pairing.apply(d_0, Q_1)
-		self.failUnlessEqual(k_01_a, k_01_b)
+		self.assertEqual(k_01_a, k_01_b)
 		k_10_a = pairing.apply(Q_1, d_0)
 		k_10_b = pairing.apply(d_1, Q_0)
-		self.failUnlessEqual(k_10_a, k_10_b)
+		self.assertEqual(k_10_a, k_10_b)
 		
 
 if __name__ == '__main__':
-	unittest.main()
+	# unittest.main()
+	params = Parameters(qbits=1024, rbits=1000)
+	pairing = Pairing(params)
+	P = Element.random(pairing, G1)
+	Q = Element.random(pairing, G2)
+	r = Element.random(pairing, Zr)
+	e = pairing.apply(P, Q)
+	print("params =", str(params))
+	print("pairing =", str(pairing))
+	print("P =", str(P))
+	PP = Element(pairing, G1, value=str(P))
+	print("PP =", str(PP))
+	print("Q =", str(Q))
+	print("r =", str(r))
+	print("e =", str(e))
+	P0 = Element.zero(pairing, G1)
+	P1 = Element.one(pairing, G1)
+	print("P0 =", str(P0))
+	print("P1 =", str(P1))
+	Q0 = Element.zero(pairing, G2)
+	Q1 = Element.one(pairing, G2)
+	print("Q0 =", str(Q0))
+	print("Q1 =", str(Q1))
+	rP = P * r
+	print("rP =", str(rP))
+	for j in range (0,2):
+		if j == 0:
+			set_point_format_compressed()
+		else:
+			set_point_format_uncompressed()
+		for i in range(0, 100):
+			R = Element.random(pairing, G1)
+			RR = Element(pairing, G1, str(R))
+			if i < 10:
+				print ("R =", str(R))
+				print ("RR =", str(R))
+			assert RR == R
+	# for i in range(0,1000):
+	# 	r = Element.random(pairing, Zr)
+	# 	print("i, r =", i, str(r))
+		
+	
