@@ -282,7 +282,7 @@ class TestElement(unittest.TestCase):
 
 if __name__ == '__main__':
 	# unittest.main()
-	params = Parameters(qbits=1024, rbits=1000)
+	params = Parameters(qbits=128, rbits=100)
 	pairing = Pairing(params)
 	P = Element.random(pairing, G1)
 	Q = Element.random(pairing, G2)
@@ -293,9 +293,13 @@ if __name__ == '__main__':
 	print("P =", str(P))
 	PP = Element(pairing, G1, value=str(P))
 	print("PP =", str(PP))
+	assert P == PP
 	print("Q =", str(Q))
 	print("r =", str(r))
 	print("e =", str(e))
+	ee = Element(pairing, GT, value=str(e))
+	print("ee =", str(ee))
+	assert e == ee
 	P0 = Element.zero(pairing, G1)
 	P1 = Element.one(pairing, G1)
 	print("P0 =", str(P0))
@@ -314,10 +318,17 @@ if __name__ == '__main__':
 		for i in range(0, 100):
 			R = Element.random(pairing, G1)
 			RR = Element(pairing, G1, str(R))
+			S = Element.random(pairing, G1)
+			e = pairing.apply(P, Q)
+			ee = Element(pairing, GT, value=str(e))
 			if i < 10:
 				print ("R =", str(R))
 				print ("RR =", str(R))
+				print ("S =", str(S))
+				print("e =", str(e))
+				print("ee =", str(ee))
 			assert RR == R
+			assert ee == e
 	# for i in range(0,1000):
 	# 	r = Element.random(pairing, Zr)
 	# 	print("i, r =", i, str(r))

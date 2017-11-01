@@ -563,18 +563,45 @@ int Element_init(PyObject *py_self, PyObject *args, PyObject *kwargs) {
 			element_set(self->pbc_element, e->pbc_element);
 		} else {
 			int bytesize;
-			char *str;
+			char *cstr;
+			char str[4096];
+			unsigned char nextch;
 			Py_ssize_t s_str;
-			str = PyUnicode_AsUTF8AndSize(value, &s_str);
+			cstr = PyUnicode_AsUTF8AndSize(value, &s_str);
+			strncpy(str,cstr,s_str);
 			if (str != NULL) {
 				unsigned char byteval[4096];
 				// printf("parsing string for value \"%s\"\n", string);
 				// value is a string, see if encoded EC Point or Fp2 tuple
 				if (strncmp(str, "(", 1) == 0) {
 					// Fp2 tuple? (x0, x1)
+					// drop "(0x, 0x)" from count, divide by 2 for hex
+					//printf("incoming tuple %s\n", str);
+					bytesize = (s_str - 8) >> 1;
+					// copy x coord one place to left
+					for (ii = 3; ii < (bytesize+3); ii++) {
+						str[ii-1] = str[ii];
+					}
+					// copy y coord fives place to left 
+					for (ii = 2+bytesize; ii < 2+(2*bytesize); ii++){
+						str[ii] = str[ii+5];
+					}
+					str[2+(2*bytesize)] = 0x00;
+					//printf("smushed tuple %s\n", &str[2]);
+					//printf("length = %d, bytesize=%d\n", strlen(&str[2]), bytesize);
 					// unhandled type, fail hard
-					PyErr_SetString(PyExc_TypeError, "invalid type for argument 'value'");
-					return -1;
+					//PyErr_SetString(PyExc_TypeError, "invalid type for argument 'value'");
+					//return -1;
+					for (ii = 0 ; ii < bytesize ; ii++ ) {
+						sscanf(&str[2+(2*ii)], "%2hhx", &byteval[ii]);
+					}
+					//printf("compressed\n");
+					ii = element_from_bytes(self->pbc_element, byteval);
+					// you're ready!
+					self->ready = 1;
+					// we're clear
+					return 0;
+				printf("parsed\n");
 				} else if (strncmp(str, "00", 2) == 0) {
 					// assume EC Point at infinity
 					element_set0(self->pbc_element);
