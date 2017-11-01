@@ -234,6 +234,7 @@ int Parameters_init(Parameters *self, PyObject *args, PyObject *kwargs) {
 // Parameters(param_string=str, n=long, qbits=long, rbits=long, short=True/False) -> Parameters
 PyObject* Parameters_str(Parameters *parameters) {
 	FILE *fp;
+	PyObject *param;
 	// int size;
 	// build the string buffer- AIEEE! MAGIC CONSTANT!
 	char buffer[4096];
@@ -243,10 +244,12 @@ PyObject* Parameters_str(Parameters *parameters) {
 	if (fp != NULL) {
 		pbc_param_out_str(fp, parameters->pbc_params);
 		fclose(fp);
-		return PyUnicode_FromString(buffer);
+		param = PyUnicode_FromString(buffer);
 	} else {
-		return PyUnicode_FromString("");
+		param = PyUnicode_FromString("");
 	}
+	
+	return param;
 }
 
 // deallocates the object when done
