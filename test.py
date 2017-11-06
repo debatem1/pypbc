@@ -311,6 +311,7 @@ if __name__ == '__main__':
 	rP = P * r
 	print("rP =", str(rP))
 	for j in range (0,2):
+		
 		if j == 0:
 			set_point_format_compressed()
 		else:
@@ -332,5 +333,3 @@ if __name__ == '__main__':
 	# for i in range(0,1000):
 	# 	r = Element.random(pairing, Zr)
 	# 	print("i, r =", i, str(r))
-		
-	

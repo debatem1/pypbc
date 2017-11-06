@@ -1340,5 +1340,7 @@ PyInit_pypbc(void)
 	PyModule_AddObject(m, "G2", PyLong_FromLong(G2));
 	PyModule_AddObject(m, "GT", PyLong_FromLong(GT));
 	PyModule_AddObject(m, "Zr", PyLong_FromLong(Zr));
+	// expose point format
+	PyModule_AddObject(m, "PBC_EC_Compressed", PyLong_FromLong(PBC_EC_Compressed));
 	return m;
 }
