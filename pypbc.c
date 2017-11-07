@@ -1148,6 +1148,37 @@ PyObject *Element_invert(PyObject *a) {
 	return (PyObject*)e2;
 }
 
+// returns python Integer representation for Element (only for Zr)
+PyObject *Element_int(PyObject *a) {
+	// build the string buffer- AIEEE! MAGIC CONSTANT!
+	unsigned char string[4096];
+	unsigned char hex_value[4096];
+	int size,ii;
+	
+	// check the type of a
+	if (!PyObject_TypeCheck(a, &ElementType)) {
+		PyErr_SetString(PyExc_TypeError, "argument must be an element.");
+		return NULL;
+	}
+	
+	Element *py_ele = (Element*)a;
+	if (py_ele->group != Zr) {
+		PyErr_SetString(PyExc_ValueError, "Cannot convert multidimensional point to int.");
+		return NULL;
+	}
+	
+	// printf("Zr vector dimension %d\n", dim);
+	size = element_to_bytes(string, py_ele->pbc_element);
+	sprintf((char *)&hex_value[0], "0x");
+	for (ii = 0 ; ii < size; ii++) {
+		sprintf((char *)&hex_value[2*ii], "%02X", string[ii]);
+	}
+	// terminate string with NULL
+	hex_value[2*size] = NULL;
+	// translate hex (base 16) to python long 
+	return PyLong_FromString(hex_value, NULL, 16);
+}
+
 PyObject *Element_cmp(PyObject *a, PyObject *b, int op) {
 
 	// typecheck a
@@ -1226,7 +1257,7 @@ PyNumberMethods Element_num_meths = {
 	0,				//binaryfunc nb_and;
 	0,				//binaryfunc nb_xor;
 	0,				//binaryfunc nb_or;
-	0,		//unaryfunc nb_int;
+	(unaryfunc)Element_int,		//unaryfunc nb_int;
 	0,				//void *nb_reserved;
 	0,				//unaryfunc nb_float;
 
@@ -1246,6 +1277,17 @@ PyNumberMethods Element_num_meths = {
 	0,				//binaryfunc nb_inplace_floor_divide;
 	0,				//binaryfunc nb_inplace_true_divide;
 };
+
+
+//PySequenceMethods Element_sq_meths = {
+//    Element_len,       /* inquiry sq_length;             /* __len__ */
+//    0,    /* binaryfunc sq_concat;          /* __add__ */
+//    0,    /* intargfunc sq_repeat;          /* __mul__ */
+//    Buffer_GetItem,   /* intargfunc sq_item;            /* __getitem__ */
+//    0,  /* intintargfunc sq_slice;        /* __getslice__ */
+//    Buffer_SetItem,   /* intobjargproc sq_ass_item;     /* __setitem__ */
+//    0,  /* intintobjargproc sq_ass_slice; /* __setslice__ */
+//};
 
 
 PyTypeObject ElementType = {

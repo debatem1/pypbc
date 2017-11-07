@@ -299,6 +299,8 @@ if __name__ == '__main__':
 	print("e =", str(e))
 	ee = Element(pairing, GT, value=str(e))
 	print("ee =", str(ee))
+	print("int(r) = ", int(r))
+	print("int(r), hex = 0x%X" % (int(r)))
 	assert e == ee
 	P0 = Element.zero(pairing, G1)
 	P1 = Element.one(pairing, G1)
