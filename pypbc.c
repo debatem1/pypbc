@@ -1228,6 +1228,70 @@ PyObject *Element_cmp(PyObject *a, PyObject *b, int op) {
 	}
 }
 
+// returns dimension of Element (PBC convention is zero for Zr)
+Py_ssize_t  Element_len(PyObject *a) {
+	Py_ssize_t e_dim = 0;
+	// check the type of a
+	if (!PyObject_TypeCheck(a, &ElementType)) {
+		PyErr_SetString(PyExc_TypeError, "argument must be an element.");
+		return -1;
+	}
+	
+	Element *py_ele = (Element*)a;
+	if (py_ele->group == Zr) {
+		PyErr_SetString(PyExc_TypeError, "Elements of type Zr have no len()");
+		return NULL;
+	}
+	
+	// query the element dimension
+	e_dim = element_item_count(py_ele->pbc_element);
+	 
+	return e_dim;
+}
+
+// returns python Integer representation for ith item of Element (error for Zr)
+PyObject *Element_GetItem(PyObject *a, Py_ssize_t i) {
+	// build the string buffer- AIEEE! MAGIC CONSTANT!
+	unsigned char string[4096];
+	unsigned char hex_value[4096];
+	int size,ii;
+	element_ptr ith_element;
+	Py_ssize_t e_dim = 0;
+	
+	// check the type of a
+	if (!PyObject_TypeCheck(a, &ElementType)) {
+		PyErr_SetString(PyExc_TypeError, "argument must be an element.");
+		return NULL;
+	}
+	
+	Element *py_ele = (Element*)a;
+	if (py_ele->group == Zr) {
+		PyErr_SetString(PyExc_ValueError, "Elements of type Zr are not dimensioned.");
+		return NULL;
+	}
+	
+	// query the element dimension
+	e_dim = element_item_count(py_ele->pbc_element);
+	
+	if ((i < 0) || (i >= e_dim)) {
+		PyErr_SetString(PyExc_ValueError, "Index out of range.");
+		return NULL;
+	}
+
+	ith_element = element_item(py_ele->pbc_element, i);
+
+	// printf("Zr vector dimension %d\n", dim);
+	size = element_to_bytes(string, ith_element);
+	sprintf((char *)&hex_value[0], "0x");
+	for (ii = 0 ; ii < size; ii++) {
+		sprintf((char *)&hex_value[2*ii], "%02X", string[ii]);
+	}
+	// terminate string with NULL
+	hex_value[2*size] = NULL;
+	// translate hex (base 16) to python long 
+	return PyLong_FromString(hex_value, NULL, 16);
+}
+
 PyMemberDef Element_members[] = {
 	{NULL}
 };
@@ -1279,15 +1343,15 @@ PyNumberMethods Element_num_meths = {
 };
 
 
-//PySequenceMethods Element_sq_meths = {
-//    Element_len,       /* inquiry sq_length;             /* __len__ */
-//    0,    /* binaryfunc sq_concat;          /* __add__ */
-//    0,    /* intargfunc sq_repeat;          /* __mul__ */
-//    Buffer_GetItem,   /* intargfunc sq_item;            /* __getitem__ */
-//    0,  /* intintargfunc sq_slice;        /* __getslice__ */
-//    Buffer_SetItem,   /* intobjargproc sq_ass_item;     /* __setitem__ */
-//    0,  /* intintobjargproc sq_ass_slice; /* __setslice__ */
-//};
+PySequenceMethods Element_sq_meths = {
+    Element_len,       /* inquiry sq_length;             /* __len__ */
+    0,    /* binaryfunc sq_concat;          /* __add__ */
+    0,    /* intargfunc sq_repeat;          /* __mul__ */
+    Element_GetItem,   /* intargfunc sq_item;            /* __getitem__ */
+    0,  /* intintargfunc sq_slice;        /* __getslice__ */
+    0,   /* intobjargproc sq_ass_item;     /* __setitem__ */
+    0,  /* intintobjargproc sq_ass_slice; /* __setslice__ */
+};
 
 
 PyTypeObject ElementType = {
@@ -1302,7 +1366,7 @@ PyTypeObject ElementType = {
 	0,			   /*tp_reserved*/
 	Element_str,                         /*tp_repr*/
 	&Element_num_meths,                         /*tp_as_number*/
-	0,                         /*tp_as_sequence*/
+	&Element_sq_meths,                         /*tp_as_sequence*/
 	0,                         /*tp_as_mapping*/
 	0,                         /*tp_hash */
 	0,                         /*tp_call*/
@@ -1355,7 +1419,7 @@ PyMODINIT_FUNC
 PyInit_pypbc(void) 
 {
 	PyObject* m;
-
+	
 	if (PyType_Ready(&ParametersType) < 0)
 		return NULL;
 
