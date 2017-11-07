@@ -299,8 +299,25 @@ if __name__ == '__main__':
 	print("e =", str(e))
 	ee = Element(pairing, GT, value=str(e))
 	print("ee =", str(ee))
+	print("len(P) =", len(P))
+	print("P[0] = 0x%X" % (P[0]))
+	print("P[1] = 0x%X" % (P[1]))
+	assert len(P) == 2
+	print("len(Q) =", len(Q))
+	print("Q[0] = 0x%X" % (Q[0]))
+	print("Q[1] = 0x%X" % (Q[1]))
+	assert len(P) == 2
+	try:
+		print("len(r) =", len(r))
+		assert False
+	except TypeError:
+		print(" failed as expected")
 	print("int(r) = ", int(r))
 	print("int(r), hex = 0x%X" % (int(r)))
+	print("len(e) =", len(e))
+	print("e[0] = 0x%X" % (e[0]))
+	print("e[1] = 0x%X" % (e[1]))
+	assert len(P) == 2
 	assert e == ee
 	P0 = Element.zero(pairing, G1)
 	P1 = Element.one(pairing, G1)
