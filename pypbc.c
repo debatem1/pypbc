@@ -1368,7 +1368,7 @@ PyTypeObject ElementType = {
 	&Element_num_meths,                         /*tp_as_number*/
 	&Element_sq_meths,                         /*tp_as_sequence*/
 	0,                         /*tp_as_mapping*/
-	0,                         /*tp_hash */
+	Element_str,                         /*tp_hash */
 	0,                         /*tp_call*/
 	Element_str,                         /*tp_str*/
 	0,                         /*tp_getattro*/
