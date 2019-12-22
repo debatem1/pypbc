@@ -151,7 +151,7 @@ int Parameters_init(Parameters *self, PyObject *args, PyObject *kwargs) {
 	char *kwds[] = {"param_string", "n", "qbits", "rbits", "short", NULL};
 	// if the parameters are given as a string
 	char *param_string = NULL;
-	size_t s_len = 0;
+	Py_ssize_t s_len = 0;
 	// for type A1 and F fields, F if short is provided and True
 	PyObject *n = NULL;
 	// for type A and E fields, E if short is provided and True
@@ -204,7 +204,7 @@ int Parameters_init(Parameters *self, PyObject *args, PyObject *kwargs) {
 		// if so, then we build a type f curve.
 		if (is_short == Py_True) {
 			// convert n to an integer
-			size_t bits = PyNumber_AsSsize_t(n, PyExc_OverflowError);
+			Py_ssize_t bits = PyNumber_AsSsize_t(n, PyExc_OverflowError);
 			pbc_param_init_f_gen(self->pbc_params, (int)bits);
 		} else {
 			// convert n to mpz_t
@@ -650,7 +650,7 @@ PyObject *Element_from_hash(PyObject *cls, PyObject *args) {
 	PyObject *pypairing;
 	enum Group group;
 	char *hash;
-	size_t hash_size;
+	Py_ssize_t hash_size;
 	if (!PyArg_ParseTuple(args, "Ois#", &pypairing, &group, &hash, &hash_size)) {
 		PyErr_SetString(PyExc_TypeError, "could not parse arguments");
 		return NULL;
@@ -1199,7 +1199,7 @@ PyObject *Element_cmp(PyObject *a, PyObject *b, int op) {
 	// type-and-value check b
 	if (!PyObject_TypeCheck(b, &ElementType)) {
 		if (PyLong_Check(b)) {
-			size_t i = PyNumber_AsSsize_t(b, NULL);
+			Py_ssize_t i = PyNumber_AsSsize_t(b, NULL);
 			if (i == 1) {
 				if(element_is1(e1->pbc_element)) {
 					if (op == Py_EQ) Py_RETURN_TRUE; else Py_RETURN_FALSE;
@@ -1368,7 +1368,7 @@ PyTypeObject ElementType = {
 	&Element_num_meths,                         /*tp_as_number*/
 	&Element_sq_meths,                         /*tp_as_sequence*/
 	0,                         /*tp_as_mapping*/
-	0,                         /*tp_hash */
+	Element_str,                         /*tp_hash */
 	0,                         /*tp_call*/
 	Element_str,                         /*tp_str*/
 	0,                         /*tp_getattro*/
