@@ -1240,7 +1240,7 @@ Py_ssize_t  Element_len(PyObject *a) {
 	Element *py_ele = (Element*)a;
 	if (py_ele->group == Zr) {
 		PyErr_SetString(PyExc_TypeError, "Elements of type Zr have no len()");
-		return NULL;
+		return -1;
 	}
 	
 	// query the element dimension
