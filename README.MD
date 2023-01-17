@@ -1,8 +1,11 @@
-#Steps to install 
+# Steps to install 
 
 1. install requirements libraries: 
-`sudo apt-get install build-essential flex bison`
-`sudo apt-get install libgmp-dev`
+````bash
+sudo apt update
+sudo apt-get install build-essential flex bison
+sudo apt-get install libgmp-dev
+````
 
 2. Download PBC source code and compile it
 ````bash
