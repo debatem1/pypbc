@@ -562,78 +562,9 @@ int Element_init(PyObject *py_self, PyObject *args, PyObject *kwargs) {
 			Element *e = (Element*)value;
 			element_set(self->pbc_element, e->pbc_element);
 		} else {
-			int bytesize;
-			char *cstr;
-			char str[4096];
-			unsigned char nextch;
-			Py_ssize_t s_str;
-			cstr = PyUnicode_AsUTF8AndSize(value, &s_str);
-			strncpy(str,cstr,s_str);
-			if (str != NULL) {
-				unsigned char byteval[4096];
-				// printf("parsing string for value \"%s\"\n", string);
-				// value is a string, see if encoded EC Point or Fp2 tuple
-				if (strncmp(str, "(", 1) == 0) {
-					// Fp2 tuple? (x0, x1)
-					// drop "(0x, 0x)" from count, divide by 2 for hex
-					//printf("incoming tuple %s\n", str);
-					bytesize = (s_str - 8) >> 1;
-					// copy x coord one place to left
-					for (ii = 3; ii < (bytesize+3); ii++) {
-						str[ii-1] = str[ii];
-					}
-					// copy y coord fives place to left 
-					for (ii = 2+bytesize; ii < 2+(2*bytesize); ii++){
-						str[ii] = str[ii+5];
-					}
-					str[2+(2*bytesize)] = 0x00;
-					//printf("smushed tuple %s\n", &str[2]);
-					//printf("length = %d, bytesize=%d\n", strlen(&str[2]), bytesize);
-					// unhandled type, fail hard
-					//PyErr_SetString(PyExc_TypeError, "invalid type for argument 'value'");
-					//return -1;
-					for (ii = 0 ; ii < bytesize ; ii++ ) {
-						sscanf(&str[2+(2*ii)], "%2hhx", &byteval[ii]);
-					}
-					//printf("compressed\n");
-					ii = element_from_bytes(self->pbc_element, byteval);
-					// you're ready!
-					self->ready = 1;
-					// we're clear
-					return 0;
-				printf("parsed\n");
-				} else if (strncmp(str, "00", 2) == 0) {
-					// assume EC Point at infinity
-					element_set0(self->pbc_element);
-					self->ready = 1;
-					return 0;
-				} else if (strncmp(str, "02", 2) == 0) {
-					// even EC Point?
-					// printf("even, compressed EC Point\n");
-					bytesize = (s_str >> 1) - 1;
-					byteval[bytesize] = 0x00;
-				} else if (strncmp(str, "03", 2) == 0) {
-					// odd EC Point?
-					// printf("odd, compressed EC Point\n");
-					bytesize = (s_str >> 1) - 1;
-					byteval[bytesize] = 0x01;
-				} else if (strncmp(str, "04", 2) == 0) {
-					// uncompressed EC Point?
-					// printf("uncompressed EC Point"\n);
-					bytesize = ((s_str >> 1) - 1) >> 1;
-					sscanf(&str[s_str - 1], "%2hhx", &byteval[bytesize]);
-					byteval[bytesize] &= 0x01;
-				}
-				for (ii = 0 ; ii < bytesize ; ii++ ) {
-					sscanf(&str[2+(2*ii)], "%2hhx", &byteval[ii]);
-				}
-				ii = element_from_bytes_compressed(self->pbc_element, byteval);
-				// printf("element_from_bytes_compressed returned %d\n", ii);
-			} else {
-				// unrecognized type, fail hard
-				PyErr_SetString(PyExc_TypeError, "invalid type for argument 'value'");
-				return -1;
-			}
+			// unrecognized type, fail hard
+			PyErr_SetString(PyExc_TypeError, "invalid type for argument 'value'");
+			return -1;
 		}
 	} else {
 		element_set0(self->pbc_element);
@@ -724,7 +655,7 @@ PyObject *Element_random(PyObject *cls, PyObject *args) {
 		case G1: element_init_G1(self->pbc_element, prepairing->pbc_pairing); break;
 		case G2: element_init_G2(self->pbc_element, prepairing->pbc_pairing); break;
 		case Zr: element_init_Zr(self->pbc_element, prepairing->pbc_pairing); break;
-		default: PyErr_SetString(PyExc_ValueError, "Invalid group.");return NULL;
+		default: PyErr_SetString(PyExc_ValueError, "Invalid group."); return NULL;
 	}
 
 	// set the group argument
@@ -770,7 +701,7 @@ PyObject *Element_zero(PyObject *cls, PyObject *args) {
 		case G2: element_init_G2(self->pbc_element, prepairing->pbc_pairing); break;
 		case GT: element_init_GT(self->pbc_element, prepairing->pbc_pairing); break;
 		case Zr: element_init_Zr(self->pbc_element, prepairing->pbc_pairing); break;
-		default: PyErr_SetString(PyExc_ValueError, "Invalid group.");return NULL;
+		default: PyErr_SetString(PyExc_ValueError, "Invalid group."); return NULL;
 	}
 	
 	// set the group argument
@@ -816,7 +747,7 @@ PyObject *Element_one(PyObject *cls, PyObject *args, PyObject *kwargs) {
 		case G2: element_init_G2(self->pbc_element, prepairing->pbc_pairing); break;
 		case GT: element_init_GT(self->pbc_element, prepairing->pbc_pairing); break;
 		case Zr: element_init_Zr(self->pbc_element, prepairing->pbc_pairing); break;
-		default: PyErr_SetString(PyExc_ValueError, "Invalid group.");return NULL;
+		default: PyErr_SetString(PyExc_ValueError, "Invalid group."); return NULL;
 	}
 
 	// set the group argument
@@ -824,6 +755,183 @@ PyObject *Element_one(PyObject *cls, PyObject *args, PyObject *kwargs) {
 		
 	// set the element to 1
 	element_set1(self->pbc_element);
+	
+	// you're ready!
+	self->ready = 1;
+	// we're clear
+	return (PyObject*)self;
+}
+
+PyObject *Element_to_bytes(PyObject *self, PyObject *args) {
+	Element *ele = (Element*)self;
+	int length = element_length_in_bytes(ele->pbc_element);
+	unsigned char *buffer = (unsigned char *)malloc(length);
+	element_to_bytes(buffer, ele->pbc_element);
+	PyObject *result = PyBytes_FromStringAndSize((char *)buffer, length);
+	free(buffer);
+	return result;
+}
+
+PyObject *Element_to_bytes_x_only(PyObject *self, PyObject *args) {
+	Element *ele = (Element*)self;
+	int length = element_length_in_bytes_x_only(ele->pbc_element);
+	unsigned char *buffer = (unsigned char *)malloc(length);
+	element_to_bytes_x_only(buffer, ele->pbc_element);
+	PyObject *result = PyBytes_FromStringAndSize((char *)buffer, length);
+	free(buffer);
+	return result;
+}
+
+PyObject *Element_to_bytes_compressed(PyObject *self, PyObject *args) {
+	Element *ele = (Element*)self;
+	int length = element_length_in_bytes_compressed(ele->pbc_element);
+	unsigned char *buffer = (unsigned char *)malloc(length);
+	element_to_bytes_compressed(buffer, ele->pbc_element);
+	PyObject *result = PyBytes_FromStringAndSize((char *)buffer, length);
+	free(buffer);
+	return result;
+}
+
+PyObject *Element_from_bytes(PyObject *cls, PyObject *args) {
+	// required arguments are the pairing and the group
+	PyObject *pypairing;
+	enum Group group;
+	PyObject *bytes;
+	if (!PyArg_ParseTuple(args, "OiO", &pypairing, &group, &bytes)) {
+		PyErr_SetString(PyExc_TypeError, "could not parse arguments");
+		return NULL;
+	}
+	
+	// check the type of arguments
+	if(!PyObject_TypeCheck(pypairing, &PairingType)) {
+		PyErr_SetString(PyExc_TypeError, "expected Pairing, got something else.");
+		return NULL;
+	}
+	
+	// build ourselves
+	Element *self = Element_create();
+		
+	// store the pairing and incref it, since we depend on its existence
+	Py_INCREF(pypairing);
+	self->pairing = pypairing;
+	
+	// cast the arguments
+	Pairing *prepairing = (Pairing*)pypairing;
+	
+	// use the arguments to init the element
+	switch(group) {
+		case G1: element_init_G1(self->pbc_element, prepairing->pbc_pairing); break;
+		case G2: element_init_G2(self->pbc_element, prepairing->pbc_pairing); break;
+		case GT: element_init_GT(self->pbc_element, prepairing->pbc_pairing); break;
+		case Zr: element_init_Zr(self->pbc_element, prepairing->pbc_pairing); break;
+		default: PyErr_SetString(PyExc_ValueError, "Invalid group."); return NULL;
+	}
+
+	// set the group argument
+	self->group = group;
+	
+	// convert the bytes to an element
+	int length = PyBytes_Size(bytes);
+	unsigned char *buffer = (unsigned char *)PyBytes_AsString(bytes);
+	element_from_bytes(self->pbc_element, buffer);
+	
+	// you're ready!
+	self->ready = 1;
+	// we're clear
+	return (PyObject*)self;
+}
+
+PyObject *Element_from_bytes_compressed(PyObject *cls, PyObject *args) {
+	// required arguments are the pairing and the group
+	PyObject *pypairing;
+	enum Group group;
+	PyObject *bytes;
+	if (!PyArg_ParseTuple(args, "OiO", &pypairing, &group, &bytes)) {
+		PyErr_SetString(PyExc_TypeError, "could not parse arguments");
+		return NULL;
+	}
+	
+	// check the type of arguments
+	if(!PyObject_TypeCheck(pypairing, &PairingType)) {
+		PyErr_SetString(PyExc_TypeError, "expected Pairing, got something else.");
+		return NULL;
+	}
+	
+	// build ourselves
+	Element *self = Element_create();
+		
+	// store the pairing and incref it, since we depend on its existence
+	Py_INCREF(pypairing);
+	self->pairing = pypairing;
+	
+	// cast the arguments
+	Pairing *prepairing = (Pairing*)pypairing;
+	
+	// use the arguments to init the element
+	switch(group) {
+		case G1: element_init_G1(self->pbc_element, prepairing->pbc_pairing); break;
+		case G2: element_init_G2(self->pbc_element, prepairing->pbc_pairing); break;
+		case GT: element_init_GT(self->pbc_element, prepairing->pbc_pairing); break;
+		case Zr: element_init_Zr(self->pbc_element, prepairing->pbc_pairing); break;
+		default: PyErr_SetString(PyExc_ValueError, "Invalid group."); return NULL;
+	}
+
+	// set the group argument
+	self->group = group;
+	
+	// convert the bytes to an element
+	int length = PyBytes_Size(bytes);
+	unsigned char *buffer = (unsigned char *)PyBytes_AsString(bytes);
+	element_from_bytes_compressed(self->pbc_element, buffer);
+	
+	// you're ready!
+	self->ready = 1;
+	// we're clear
+	return (PyObject*)self;
+}
+
+PyObject *Element_from_bytes_x_only(PyObject *cls, PyObject *args) {
+	// required arguments are the pairing and the group
+	PyObject *pypairing;
+	enum Group group;
+	PyObject *bytes;
+	if (!PyArg_ParseTuple(args, "OiO", &pypairing, &group, &bytes)) {
+		PyErr_SetString(PyExc_TypeError, "could not parse arguments");
+		return NULL;
+	}
+	
+	// check the type of arguments
+	if(!PyObject_TypeCheck(pypairing, &PairingType)) {
+		PyErr_SetString(PyExc_TypeError, "expected Pairing, got something else.");
+		return NULL;
+	}
+	
+	// build ourselves
+	Element *self = Element_create();
+		
+	// store the pairing and incref it, since we depend on its existence
+	Py_INCREF(pypairing);
+	self->pairing = pypairing;
+	
+	// cast the arguments
+	Pairing *prepairing = (Pairing*)pypairing;
+	
+	// use the arguments to init the element
+	switch(group) {
+		case G1: element_init_G1(self->pbc_element, prepairing->pbc_pairing); break;
+		case G2: element_init_G2(self->pbc_element, prepairing->pbc_pairing); break;
+		case GT: element_init_GT(self->pbc_element, prepairing->pbc_pairing); break;
+		case Zr: element_init_Zr(self->pbc_element, prepairing->pbc_pairing); break;
+		default: PyErr_SetString(PyExc_ValueError, "Invalid group."); return NULL;
+	}
+
+	// set the group argument
+	self->group = group;
+	
+	// convert the bytes to an element
+	int length = PyBytes_Size(bytes);
+	unsigned char *buffer = (unsigned char *)PyBytes_AsString(bytes);
+	element_from_bytes_x_only(self->pbc_element, buffer);
 	
 	// you're ready!
 	self->ready = 1;
@@ -904,7 +1012,7 @@ PyObject *Element_str(PyObject *element) {
 				}
 				pad += 2*size;
 			}
-			sprintf((char *)&hex_value[pad],")");
+			sprintf((char *)&hex_value[pad], ")");
 			return PyUnicode_FromStringAndSize(hex_value, pad + 1);
 		case Zr:
 			// printf("Zr vector dimension %d\n", dim);
@@ -1153,7 +1261,7 @@ PyObject *Element_int(PyObject *a) {
 	// build the string buffer- AIEEE! MAGIC CONSTANT!
 	unsigned char string[4096];
 	unsigned char hex_value[4096];
-	int size,ii;
+	int size, ii;
 	
 	// check the type of a
 	if (!PyObject_TypeCheck(a, &ElementType)) {
@@ -1254,7 +1362,7 @@ PyObject *Element_GetItem(PyObject *a, Py_ssize_t i) {
 	// build the string buffer- AIEEE! MAGIC CONSTANT!
 	unsigned char string[4096];
 	unsigned char hex_value[4096];
-	int size,ii;
+	int size, ii;
 	element_ptr ith_element;
 	Py_ssize_t e_dim = 0;
 	
@@ -1301,6 +1409,12 @@ PyMethodDef Element_methods[] = {
 	{"random", (PyCFunction)Element_random, METH_VARARGS | METH_CLASS, "Creates a random element from the given group."},
 	{"zero", (PyCFunction)Element_zero, METH_VARARGS | METH_CLASS, "Creates an element representing the additive identity for its group."},
 	{"one", (PyCFunction)Element_one, METH_VARARGS | METH_CLASS, "Creates an element representing the multiplicative identity for its group."},
+	{"to_bytes", (PyCFunction)Element_to_bytes, METH_NOARGS, "Converts the element to a byte string."},
+	{"to_bytes_x_only", (PyCFunction)Element_to_bytes_x_only, METH_NOARGS, "Converts the element to a byte string using the x-only format."},
+	{"to_bytes_compressed", (PyCFunction)Element_to_bytes_compressed, METH_NOARGS, "Converts the element to a byte string using the compressed format."},
+	{"from_bytes", (PyCFunction)Element_from_bytes, METH_VARARGS | METH_CLASS, "Creates an element from a byte string."},
+	{"from_bytes_compressed", (PyCFunction)Element_from_bytes_compressed, METH_VARARGS | METH_CLASS, "Creates an element from a byte string using the compressed format."},
+	{"from_bytes_x_only", (PyCFunction)Element_from_bytes_x_only, METH_VARARGS | METH_CLASS, "Creates an element from a byte string using the x-only format."},
 	{NULL, NULL}
 };
 
