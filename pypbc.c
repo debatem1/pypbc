@@ -542,7 +542,7 @@ int Element_init(PyObject *py_self, PyObject *args, PyObject *kwargs) {
 		case G2: element_init_G2(self->pbc_element, prepairing->pbc_pairing); break;
 		case GT: element_init_GT(self->pbc_element, prepairing->pbc_pairing); break;
 		case Zr: element_init_Zr(self->pbc_element, prepairing->pbc_pairing); break;
-		default: return -1;
+		default: PyErr_SetString(PyExc_ValueError, "Invalid group."); return -1;
 	}
 	
 	// set the group argument
@@ -772,21 +772,29 @@ PyObject *Element_to_bytes(PyObject *self, PyObject *args) {
 	return result;
 }
 
-PyObject *Element_to_bytes_x_only(PyObject *self, PyObject *args) {
+PyObject *Element_to_bytes_compressed(PyObject *self, PyObject *args) {
 	Element *ele = (Element*)self;
-	int length = element_length_in_bytes_x_only(ele->pbc_element);
+	if (ele->group != G1 && ele->group != G2) {
+		PyErr_SetString(PyExc_TypeError, "Element must be in G1 or G2.");
+		return NULL;
+	}
+	int length = element_length_in_bytes_compressed(ele->pbc_element);
 	unsigned char *buffer = (unsigned char *)malloc(length);
-	element_to_bytes_x_only(buffer, ele->pbc_element);
+	element_to_bytes_compressed(buffer, ele->pbc_element);
 	PyObject *result = PyBytes_FromStringAndSize((char *)buffer, length);
 	free(buffer);
 	return result;
 }
 
-PyObject *Element_to_bytes_compressed(PyObject *self, PyObject *args) {
+PyObject *Element_to_bytes_x_only(PyObject *self, PyObject *args) {
 	Element *ele = (Element*)self;
-	int length = element_length_in_bytes_compressed(ele->pbc_element);
+	if (ele->group != G1 && ele->group != G2) {
+		PyErr_SetString(PyExc_TypeError, "Element must be in G1 or G2.");
+		return NULL;
+	}
+	int length = element_length_in_bytes_x_only(ele->pbc_element);
 	unsigned char *buffer = (unsigned char *)malloc(length);
-	element_to_bytes_compressed(buffer, ele->pbc_element);
+	element_to_bytes_x_only(buffer, ele->pbc_element);
 	PyObject *result = PyBytes_FromStringAndSize((char *)buffer, length);
 	free(buffer);
 	return result;
@@ -871,8 +879,6 @@ PyObject *Element_from_bytes_compressed(PyObject *cls, PyObject *args) {
 	switch(group) {
 		case G1: element_init_G1(self->pbc_element, prepairing->pbc_pairing); break;
 		case G2: element_init_G2(self->pbc_element, prepairing->pbc_pairing); break;
-		case GT: element_init_GT(self->pbc_element, prepairing->pbc_pairing); break;
-		case Zr: element_init_Zr(self->pbc_element, prepairing->pbc_pairing); break;
 		default: PyErr_SetString(PyExc_ValueError, "Invalid group."); return NULL;
 	}
 
@@ -920,8 +926,6 @@ PyObject *Element_from_bytes_x_only(PyObject *cls, PyObject *args) {
 	switch(group) {
 		case G1: element_init_G1(self->pbc_element, prepairing->pbc_pairing); break;
 		case G2: element_init_G2(self->pbc_element, prepairing->pbc_pairing); break;
-		case GT: element_init_GT(self->pbc_element, prepairing->pbc_pairing); break;
-		case Zr: element_init_Zr(self->pbc_element, prepairing->pbc_pairing); break;
 		default: PyErr_SetString(PyExc_ValueError, "Invalid group."); return NULL;
 	}
 
