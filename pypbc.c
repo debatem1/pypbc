@@ -956,8 +956,7 @@ PyObject *Element_str(PyObject *element) {
 	// extract the internal element
 	Element *py_ele = (Element*)element;
 	PyObject *result = NULL;
-	int ii, jj, pad, size = 0;
-	// int ii = 0;
+	int ii = 0, jj = 0, size, temp, pad = 0;
 	// build the string buffer- AIEEE! MAGIC CONSTANT!
 	unsigned char string[4096];
 	unsigned char hex_value[4096];
@@ -966,67 +965,67 @@ PyObject *Element_str(PyObject *element) {
 	switch(py_ele->group) {
 		case G1:
 		case G2:
-			// printf("G1/G2 point dimension %d\n", element_item_count(py_ele->pbc_element));
-			if (element_is0(py_ele->pbc_element) == 1) {
-				size = (2 * element_length_in_bytes_compressed(py_ele->pbc_element)) - 1;
-				for (ii = 0; ii < size; ii++) {
-					string[ii] = 0x00 ;
+			if (PBC_EC_Compressed) {
+				sprintf((char *)&hex_value[pad], "0x");
+				pad += 2;
+				size = element_to_bytes_compressed(string, py_ele->pbc_element);
+				for (; ii < size; ii++) {
+					sprintf((char *)&hex_value[pad], "%02X", string[ii]);
+					pad += 2;
 				}
+				break;
 			} else {
-				if (PBC_EC_Compressed) {
-					size = element_to_bytes_compressed(&string[1], py_ele->pbc_element);
-					string[0] = 0x02 | string[size];
-					string[size] = 0;
-				} else {
-					if (dim != 2) {
-						PyErr_SetString(PyExc_ValueError, "Invalid Elliptic Curve Point Dimension.");
-						return NULL;
-					}
-					element_ptr ex, ey;
-					string[0] = 0x04;
-					size = 1;
-					ex = element_item(py_ele->pbc_element, 0);
-					ey = element_item(py_ele->pbc_element, 1);
-					size += element_to_bytes(&string[size], ex);
-					size += element_to_bytes(&string[size], ey);
-					string[size] = 0;
+				sprintf((char *)&hex_value[pad], "(0x");
+				pad += 3;
+				size = element_to_bytes(string, py_ele->pbc_element);
+				temp = element_length_in_bytes_x_only(py_ele->pbc_element);
+				for (; ii < temp; ii++) {
+					sprintf((char *)&hex_value[pad], "%02X", string[ii]);
+					pad += 2;
 				}
+				sprintf((char *)&hex_value[pad], ", 0x");
+				pad += 4;
+				for (; ii < size; ii++) {
+					sprintf((char *)&hex_value[pad], "%02X", string[ii]);
+					pad += 2;
+				}
+				sprintf((char *)&hex_value[pad], ")");
+				pad += 1;
+				break;
 			}
-			for (ii = 0 ; ii < size; ii++) {
-				sprintf((char *)&hex_value[2*ii], "%02X", string[ii]);
-			}
-			return PyUnicode_FromStringAndSize(hex_value, size * 2);
 		case GT:
 			// printf("GT vector dimension %d\n", dim);
-			size = 0;
-			sprintf((char *)&hex_value[0], "(0x");
-			pad = 3;
-			for (ii = 0; ii < dim; ii++) {
-				size = element_to_bytes(string, element_item(py_ele->pbc_element, ii));
-				if (ii != 0 ) {
+			sprintf((char *)&hex_value[pad], "(0x");
+			pad += 3;
+			for (; jj < dim; jj++) {
+				if (jj != 0) {
 					sprintf((char *)&hex_value[pad], ", 0x") ;
 					pad += 4;
 				}
-				for (jj = 0 ; jj < size; jj++) {
-					sprintf((char *)&hex_value[(2*jj)+pad], "%02X", string[jj]);
+				size = element_to_bytes(string, element_item(py_ele->pbc_element, jj));
+				for (; ii < size; ii++) {
+					sprintf((char *)&hex_value[pad], "%02X", string[ii]);
+					pad += 2;
 				}
-				pad += 2*size;
 			}
 			sprintf((char *)&hex_value[pad], ")");
-			return PyUnicode_FromStringAndSize(hex_value, pad + 1);
+			pad += 1;
+			break;
 		case Zr:
 			// printf("Zr vector dimension %d\n", dim);
+			sprintf((char *)&hex_value[pad], "0x");
+			pad += 2;
 			size = element_to_bytes(string, py_ele->pbc_element);
-			sprintf((char *)&hex_value[0], "0x");
-			for (ii = 0 ; ii < size; ii++) {
-				sprintf((char *)&hex_value[2*(ii+1)], "%02X", string[ii]);
+			for (; ii < size; ii++) {
+				sprintf((char *)&hex_value[pad], "%02X", string[ii]);
+				pad += 2;
 			}
-			return PyUnicode_FromStringAndSize(hex_value, (size+1) * 2);
-		default:
 			break;
+		default:
+			PyErr_SetString(PyExc_ValueError, "Invalid group.");
+			return NULL;
 	}
-	PyErr_SetString(PyExc_ValueError, "Invalid group.");
-	return NULL;
+	return PyUnicode_FromStringAndSize(hex_value, pad);
 }
 
 // adds two elements together
@@ -1261,7 +1260,7 @@ PyObject *Element_int(PyObject *a) {
 	// build the string buffer- AIEEE! MAGIC CONSTANT!
 	unsigned char string[4096];
 	unsigned char hex_value[4096];
-	int size, ii;
+	int size, ii = 0;
 	
 	// check the type of a
 	if (!PyObject_TypeCheck(a, &ElementType)) {
@@ -1278,7 +1277,7 @@ PyObject *Element_int(PyObject *a) {
 	// printf("Zr vector dimension %d\n", dim);
 	size = element_to_bytes(string, py_ele->pbc_element);
 	sprintf((char *)&hex_value[0], "0x");
-	for (ii = 0 ; ii < size; ii++) {
+	for (; ii < size; ii++) {
 		sprintf((char *)&hex_value[2*ii], "%02X", string[ii]);
 	}
 	// terminate string with NULL
@@ -1362,7 +1361,7 @@ PyObject *Element_GetItem(PyObject *a, Py_ssize_t i) {
 	// build the string buffer- AIEEE! MAGIC CONSTANT!
 	unsigned char string[4096];
 	unsigned char hex_value[4096];
-	int size, ii;
+	int size, ii = 0;
 	element_ptr ith_element;
 	Py_ssize_t e_dim = 0;
 	
@@ -1391,7 +1390,7 @@ PyObject *Element_GetItem(PyObject *a, Py_ssize_t i) {
 	// printf("Zr vector dimension %d\n", dim);
 	size = element_to_bytes(string, ith_element);
 	sprintf((char *)&hex_value[0], "0x");
-	for (ii = 0 ; ii < size; ii++) {
+	for (; ii < size; ii++) {
 		sprintf((char *)&hex_value[2*ii], "%02X", string[ii]);
 	}
 	// terminate string with NULL
