@@ -1028,6 +1028,10 @@ PyObject *Element_str(PyObject *element) {
 
 // adds two elements together
 PyObject *Element_add(PyObject* a, PyObject *b) {
+	if (!PyObject_TypeCheck(a, &ElementType) || !PyObject_TypeCheck(b, &ElementType)) {
+		PyErr_SetString(PyExc_TypeError, "expected Element, got something else.");
+		return NULL;
+	}
 	// convert both objects to Elements
 	Element *e1 = (Element*)a;
 	Element *e2 = (Element*)b;
@@ -1053,6 +1057,10 @@ PyObject *Element_add(PyObject* a, PyObject *b) {
 
 // subtracts two elements
 PyObject *Element_sub(PyObject* a, PyObject *b) {
+	if (!PyObject_TypeCheck(a, &ElementType) || !PyObject_TypeCheck(b, &ElementType)) {
+		PyErr_SetString(PyExc_TypeError, "expected Element, got something else.");
+		return NULL;
+	}
 	// convert both objects to Elements
 	Element *e1 = (Element*)a;
 	Element *e2 = (Element*)b;
@@ -1079,46 +1087,84 @@ PyObject *Element_sub(PyObject* a, PyObject *b) {
 // note that elements from any ring can be multiplied by those in Zr.
 PyObject *Element_mult(PyObject* a, PyObject *b) {
 	// convert a to an element
-	Element *e1 = (Element*)a;
-	
-	// build the result element
-	Element *e3 = (Element *)ElementType.tp_alloc(&ElementType, 0);
-	
-	// note that the result is in the same ring *and pairing*
-	element_init_same_as(e3->pbc_element, e1->pbc_element);
-	e3->group = e1->group;
-	Py_INCREF(e1->pairing);
-	e3->pairing = e1->pairing;
-
-	// check to see if b is an integer
-	if(PyLong_Check(b)) {
-		// cast it to an MPZ
+	int a_is_element = PyObject_TypeCheck(a, &ElementType);
+	int b_is_element = PyObject_TypeCheck(b, &ElementType);
+	if (a_is_element && b_is_element) {
+		// build the result element
+		Element *e1 = (Element*)a;
+		Element *e2 = (Element*)b;
+		if (e1->group == e2->group) {
+			Element *e3 = (Element *)ElementType.tp_alloc(&ElementType, 0);
+			// note that the result is in the same ring *and pairing*
+			element_init_same_as(e3->pbc_element, e1->pbc_element);
+			e3->group = e1->group;
+			Py_INCREF(e1->pairing);
+			e3->pairing = e1->pairing;
+			element_mul(e3->pbc_element, e1->pbc_element, e2->pbc_element);
+			e3->ready = 1;
+			return (PyObject*)e3;
+		} else if (e2->group == Zr) {
+			Element *e3 = (Element *)ElementType.tp_alloc(&ElementType, 0);
+			// note that the result is in the same ring *and pairing*
+			element_init_same_as(e3->pbc_element, e2->pbc_element);
+			e3->group = e2->group;
+			Py_INCREF(e2->pairing);
+			e3->pairing = e2->pairing;
+			element_mul_zn(e3->pbc_element, e1->pbc_element, e2->pbc_element);
+			e3->ready = 1;
+			return (PyObject*)e3;
+		} else if (e1->group == Zr) {
+			Element *e3 = (Element *)ElementType.tp_alloc(&ElementType, 0);
+			// note that the result is in the same ring *and pairing*
+			element_init_same_as(e3->pbc_element, e1->pbc_element);
+			e3->group = e1->group;
+			Py_INCREF(e1->pairing);
+			e3->pairing = e1->pairing;
+			element_mul_zn(e3->pbc_element, e2->pbc_element, e1->pbc_element);
+			e3->ready = 1;
+			return (PyObject*)e3;
+		}
+	} else if (a_is_element && PyLong_Check(b)) {
+		Element *e1 = (Element*)a;
 		mpz_t i;
 		mpz_init(i);
 		pynum_to_mpz(b, i);
+		Element *e3 = (Element *)ElementType.tp_alloc(&ElementType, 0);
+		// note that the result is in the same ring *and pairing*
+		element_init_same_as(e3->pbc_element, e1->pbc_element);
+		e3->group = e1->group;
+		Py_INCREF(e1->pairing);
+		e3->pairing = e1->pairing;
 		element_mul_mpz(e3->pbc_element, e1->pbc_element, i);
-		mpz_clear(i);	
-	} else if (PyObject_TypeCheck(b, &ElementType)) {
+		mpz_clear(i);
+		e3->ready = 1;
+		return (PyObject*)e3;
+	} else if (b_is_element && PyLong_Check(a)) {
 		Element *e2 = (Element*)b;
-		// make sure they're in the same group
-		if (e1->group != e2->group && e2->group != Zr) {
-			PyErr_SetString(PyExc_ValueError, "elements must be in the same group or Zr.");
-			return NULL;
-		}
-		// add the elements and store the result in e3
-		if (e2->group != Zr) {
-			element_mul(e3->pbc_element, e1->pbc_element, e2->pbc_element);
-		} else {
-			element_mul_zn(e3->pbc_element, e1->pbc_element, e2->pbc_element);
-		}
+		mpz_t i;
+		mpz_init(i);
+		pynum_to_mpz(a, i);
+		Element *e3 = (Element *)ElementType.tp_alloc(&ElementType, 0);
+		// note that the result is in the same ring *and pairing*
+		element_init_same_as(e3->pbc_element, e2->pbc_element);
+		e3->group = e2->group;
+		Py_INCREF(e2->pairing);
+		e3->pairing = e2->pairing;
+		element_mul_mpz(e3->pbc_element, e2->pbc_element, i);
+		mpz_clear(i);
+		e3->ready = 1;
+		return (PyObject*)e3;
 	}
-	// cast and return
-	e3->ready = 1;
-	return (PyObject*)e3;
+	PyErr_SetString(PyExc_TypeError, "Arguments must be Element and Element or Element and integer.");
+	return NULL;
 }
 
 // divide element a by element b
 PyObject *Element_div(PyObject* a, PyObject *b) {
+	if (!PyObject_TypeCheck(a, &ElementType) || !PyObject_TypeCheck(b, &ElementType)) {
+		PyErr_SetString(PyExc_TypeError, "expected Element, got something else.");
+		return NULL;
+	}
 	// convert both objects to Elements
 	Element *e1 = (Element*)a;
 	Element *e2 = (Element*)b;
@@ -1144,57 +1190,45 @@ PyObject *Element_div(PyObject* a, PyObject *b) {
 // raises element a to the power of b
 // b can be either an element or an integer
 PyObject *Element_pow(PyObject* a, PyObject *b, PyObject *c) {
-
-	// check the types
 	if (!PyObject_TypeCheck(a, &ElementType)) {
-		PyErr_SetString(PyExc_TypeError, "Argument 1 must be an element.");
+		PyErr_SetString(PyExc_TypeError, "expected Element, got something else.");
 		return NULL;
 	}
-	
 	// convert a to a pbc type
 	Element *e1 = (Element*)a;
-	
-	// build the result element
-	Element *e3 = (Element *)ElementType.tp_alloc(&ElementType, 0);
-	e3->group = e1->group;
-	Py_INCREF(e1->pairing);
-	e3->pairing = e1->pairing;
-	element_init_same_as(e3->pbc_element, e1->pbc_element);
-
 	// convert b to pbc type
 	if (PyLong_Check(b)) {	
 		// convert it to an mpz
 		mpz_t new_n;
 		pynum_to_mpz(b, new_n);
+		Element *e3 = (Element *)ElementType.tp_alloc(&ElementType, 0);
+		element_init_same_as(e3->pbc_element, e1->pbc_element);
+		e3->group = e1->group;
+		Py_INCREF(e1->pairing);
+		e3->pairing = e1->pairing;
 		// perform the pow op
 		element_pow_mpz(e3->pbc_element, e1->pbc_element, new_n);
+		e3->ready = 1;
+		return (PyObject*)e3;
 	} else if (PyObject_TypeCheck(b, &ElementType)) {
-		// convert it to an element
 		Element *e2 = (Element*)b;
-		// make sure its in the right ring
 		if (e2->group != Zr) {
-			PyErr_SetString(PyExc_ValueError, "element must be in Zr.");
-			return NULL;
+			Element *e3 = (Element *)ElementType.tp_alloc(&ElementType, 0);
+			element_init_same_as(e3->pbc_element, e1->pbc_element);
+			e3->group = e1->group;
+			Py_INCREF(e1->pairing);
+			e3->pairing = e1->pairing;
+			element_pow_zn(e3->pbc_element, e1->pbc_element, e2->pbc_element);
+			e3->ready = 1;
+			return (PyObject*)e3;
 		}
-		element_pow_zn(e3->pbc_element, e1->pbc_element, e2->pbc_element);
-	} else {
-		PyErr_SetString(PyExc_TypeError, "Argument 2 must be an integer or element.");
-		return NULL;
 	}
-	
-	// cast and return
-	e3->ready = 1;
-	return (PyObject*)e3;
+	PyErr_SetString(PyExc_TypeError, "Argument 2 must be an integer or an element in Zr.");
+	return NULL;
 }
 
 // returns -a
 PyObject *Element_neg(PyObject *a) {
-	// check the type of a
-	if (!PyObject_TypeCheck(a, &ElementType)) {
-		PyErr_SetString(PyExc_TypeError, "argument must be an element.");
-		return NULL;
-	}
-	
 	// cast it
 	Element *e1 = (Element*)a;
 	
@@ -1222,12 +1256,6 @@ PyObject *Element_neg(PyObject *a) {
 
 // returns a**-1
 PyObject *Element_invert(PyObject *a) {
-	// check the type of a
-	if (!PyObject_TypeCheck(a, &ElementType)) {
-		PyErr_SetString(PyExc_TypeError, "argument must be an element.");
-		return NULL;
-	}
-	
 	// cast it
 	Element *e1 = (Element*)a;
 	
@@ -1259,13 +1287,6 @@ PyObject *Element_int(PyObject *a) {
 	unsigned char string[4096];
 	unsigned char hex_value[4096];
 	int size, ii = 0;
-	
-	// check the type of a
-	if (!PyObject_TypeCheck(a, &ElementType)) {
-		PyErr_SetString(PyExc_TypeError, "argument must be an element.");
-		return NULL;
-	}
-	
 	Element *py_ele = (Element*)a;
 	if (py_ele->group != Zr) {
 		PyErr_SetString(PyExc_ValueError, "Cannot convert multidimensional point to int.");
@@ -1285,73 +1306,49 @@ PyObject *Element_int(PyObject *a) {
 }
 
 PyObject *Element_cmp(PyObject *a, PyObject *b, int op) {
-
-	// typecheck a
-	if (!PyObject_TypeCheck(a, &ElementType)) {
-		PyErr_SetString(PyExc_TypeError, "Cannot compare elements with non-elements.");
+	if (!PyObject_TypeCheck(a, &ElementType) || !PyObject_TypeCheck(b, &ElementType)) {
+		PyErr_SetString(PyExc_TypeError, "expected Element, got something else.");
 		return NULL;
 	}
-	
 	// it's safe, cast it to an element
 	Element *e1 = (Element*)a;
-	
-	// opcheck- only == and != are defined
-	if(op != Py_EQ && op != Py_NE) {
-		PyErr_SetString(PyExc_TypeError, "Invalid comparison between objects.");
-		return NULL;
-	}
-	
-	// type-and-value check b
-	if (!PyObject_TypeCheck(b, &ElementType)) {
-		if (PyLong_Check(b)) {
-			size_t i = PyNumber_AsSsize_t(b, NULL);
-			if (i == 1) {
-				if(element_is1(e1->pbc_element)) {
-					if (op == Py_EQ) Py_RETURN_TRUE; else Py_RETURN_FALSE;
-				} else {
-					if (op == Py_EQ) Py_RETURN_FALSE; else Py_RETURN_TRUE;
-				}
-			} else if (i == 0) {
-				if(element_is0(e1->pbc_element)) {
-					if (op == Py_EQ) Py_RETURN_TRUE; else Py_RETURN_FALSE;
-				} else {
-					if (op == Py_EQ) Py_RETURN_FALSE; else Py_RETURN_TRUE;
-				}
-			}
-		}
-		PyErr_SetString(PyExc_TypeError, "Cannot compare elements with non-elements other than 1 and 0.");
-		return NULL;
-	}
-	
 	// cast b to element
 	Element *e2 = (Element*)b;
 	// perform the comparison
-	if(!element_cmp(e1->pbc_element, e2->pbc_element)) {
-		if (op == Py_EQ) Py_RETURN_TRUE; else Py_RETURN_FALSE;
-	} else {
+	if(element_cmp(e1->pbc_element, e2->pbc_element)) {
 		if (op == Py_EQ) Py_RETURN_FALSE; else Py_RETURN_TRUE;
+	} else {
+		if (op == Py_EQ) Py_RETURN_TRUE; else Py_RETURN_FALSE;
+	}
+}
+
+PyObject *Element_is0(PyObject *a) {
+	Element *e1 = (Element*)a;
+	if (element_is0(e1->pbc_element)) {
+		Py_RETURN_TRUE;
+	} else {
+		Py_RETURN_FALSE;
+	}
+}
+
+PyObject *Element_is1(PyObject *a) {
+	Element *e1 = (Element*)a;
+	if (element_is1(e1->pbc_element)) {
+		Py_RETURN_TRUE;
+	} else {
+		Py_RETURN_FALSE;
 	}
 }
 
 // returns dimension of Element (PBC convention is zero for Zr)
 Py_ssize_t  Element_len(PyObject *a) {
-	Py_ssize_t e_dim = 0;
-	// check the type of a
-	if (!PyObject_TypeCheck(a, &ElementType)) {
-		PyErr_SetString(PyExc_TypeError, "argument must be an element.");
-		return -1;
-	}
-	
 	Element *py_ele = (Element*)a;
 	if (py_ele->group == Zr) {
 		PyErr_SetString(PyExc_TypeError, "Elements of type Zr have no len()");
-		return NULL;
+		return -1;
 	}
-	
-	// query the element dimension
-	e_dim = element_item_count(py_ele->pbc_element);
 	 
-	return e_dim;
+	return element_item_count(py_ele->pbc_element);
 }
 
 // returns python Integer representation for ith item of Element (error for Zr)
@@ -1363,12 +1360,6 @@ PyObject *Element_GetItem(PyObject *a, Py_ssize_t i) {
 	element_ptr ith_element;
 	Py_ssize_t e_dim = 0;
 	
-	// check the type of a
-	if (!PyObject_TypeCheck(a, &ElementType)) {
-		PyErr_SetString(PyExc_TypeError, "argument must be an element.");
-		return NULL;
-	}
-	
 	Element *py_ele = (Element*)a;
 	if (py_ele->group == Zr) {
 		PyErr_SetString(PyExc_ValueError, "Elements of type Zr are not dimensioned.");
@@ -1378,7 +1369,7 @@ PyObject *Element_GetItem(PyObject *a, Py_ssize_t i) {
 	// query the element dimension
 	e_dim = element_item_count(py_ele->pbc_element);
 	
-	if ((i < 0) || (i >= e_dim)) {
+	if (i < 0 || i >= e_dim) {
 		PyErr_SetString(PyExc_ValueError, "Index out of range.");
 		return NULL;
 	}
@@ -1412,6 +1403,8 @@ PyMethodDef Element_methods[] = {
 	{"from_bytes", (PyCFunction)Element_from_bytes, METH_VARARGS | METH_CLASS, "Creates an element from a byte string."},
 	{"from_bytes_compressed", (PyCFunction)Element_from_bytes_compressed, METH_VARARGS | METH_CLASS, "Creates an element from a byte string using the compressed format."},
 	{"from_bytes_x_only", (PyCFunction)Element_from_bytes_x_only, METH_VARARGS | METH_CLASS, "Creates an element from a byte string using the x-only format."},
+	{"is0", (PyCFunction)Element_is0, METH_NOARGS, "Returns True if the element is 0."},
+	{"is1", (PyCFunction)Element_is1, METH_NOARGS, "Returns True if the element is 1."},
 	{NULL, NULL}
 };
 
