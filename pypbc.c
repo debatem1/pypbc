@@ -765,11 +765,9 @@ PyObject *Element_one(PyObject *cls, PyObject *args, PyObject *kwargs) {
 PyObject *Element_to_bytes(PyObject *self, PyObject *args) {
 	Element *ele = (Element*)self;
 	int length = element_length_in_bytes(ele->pbc_element);
-	unsigned char *buffer = (unsigned char *)malloc(length);
+	unsigned char buffer[length];
 	element_to_bytes(buffer, ele->pbc_element);
-	PyObject *result = PyBytes_FromStringAndSize((char *)buffer, length);
-	free(buffer);
-	return result;
+	return PyBytes_FromStringAndSize((char *)buffer, length);
 }
 
 PyObject *Element_to_bytes_compressed(PyObject *self, PyObject *args) {
@@ -779,11 +777,9 @@ PyObject *Element_to_bytes_compressed(PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	int length = element_length_in_bytes_compressed(ele->pbc_element);
-	unsigned char *buffer = (unsigned char *)malloc(length);
+	unsigned char buffer[length];
 	element_to_bytes_compressed(buffer, ele->pbc_element);
-	PyObject *result = PyBytes_FromStringAndSize((char *)buffer, length);
-	free(buffer);
-	return result;
+	return PyBytes_FromStringAndSize((char *)buffer, length);
 }
 
 PyObject *Element_to_bytes_x_only(PyObject *self, PyObject *args) {
@@ -793,11 +789,9 @@ PyObject *Element_to_bytes_x_only(PyObject *self, PyObject *args) {
 		return NULL;
 	}
 	int length = element_length_in_bytes_x_only(ele->pbc_element);
-	unsigned char *buffer = (unsigned char *)malloc(length);
+	unsigned char buffer[length];
 	element_to_bytes_x_only(buffer, ele->pbc_element);
-	PyObject *result = PyBytes_FromStringAndSize((char *)buffer, length);
-	free(buffer);
-	return result;
+	return PyBytes_FromStringAndSize((char *)buffer, length);
 }
 
 PyObject *Element_from_bytes(PyObject *cls, PyObject *args) {
