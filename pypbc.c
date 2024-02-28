@@ -954,7 +954,7 @@ PyObject *Element_str(PyObject *element) {
 	// extract the internal element
 	Element *py_ele = (Element*)element;
 	PyObject *result = NULL;
-	int ii = 0, jj = 0, size, temp, pad = 0;
+	int ii = 0, jj = 0, size, pad = 0;
 	// build the string buffer- AIEEE! MAGIC CONSTANT!
 	unsigned char string[4096];
 	unsigned char hex_value[4096];
@@ -971,37 +971,34 @@ PyObject *Element_str(PyObject *element) {
 					sprintf((char *)&hex_value[pad], "%02X", string[ii]);
 					pad += 2;
 				}
-				break;
 			} else {
 				sprintf((char *)&hex_value[pad], "(0x");
 				pad += 3;
-				size = element_to_bytes(string, py_ele->pbc_element);
-				temp = element_length_in_bytes_x_only(py_ele->pbc_element);
-				for (; ii < temp; ii++) {
+				size = element_to_bytes(string, py_ele->pbc_element) / 2;
+				for (; ii < size * 1; ii++) {
 					sprintf((char *)&hex_value[pad], "%02X", string[ii]);
 					pad += 2;
 				}
 				sprintf((char *)&hex_value[pad], ", 0x");
 				pad += 4;
-				for (; ii < size; ii++) {
+				for (; ii < size * 2; ii++) {
 					sprintf((char *)&hex_value[pad], "%02X", string[ii]);
 					pad += 2;
 				}
 				sprintf((char *)&hex_value[pad], ")");
 				pad += 1;
-				break;
 			}
+			break;
 		case GT:
-			// printf("GT vector dimension %d\n", dim);
 			sprintf((char *)&hex_value[pad], "(0x");
 			pad += 3;
+			size = element_to_bytes(string, py_ele->pbc_element) / dim;
 			for (; jj < dim; jj++) {
 				if (jj != 0) {
 					sprintf((char *)&hex_value[pad], ", 0x") ;
 					pad += 4;
 				}
-				size = element_to_bytes(string, element_item(py_ele->pbc_element, jj));
-				for (; ii < size; ii++) {
+				for (; ii < size * (jj + 1); ii++) {
 					sprintf((char *)&hex_value[pad], "%02X", string[ii]);
 					pad += 2;
 				}
@@ -1010,7 +1007,6 @@ PyObject *Element_str(PyObject *element) {
 			pad += 1;
 			break;
 		case Zr:
-			// printf("Zr vector dimension %d\n", dim);
 			sprintf((char *)&hex_value[pad], "0x");
 			pad += 2;
 			size = element_to_bytes(string, py_ele->pbc_element);
@@ -1020,7 +1016,7 @@ PyObject *Element_str(PyObject *element) {
 			}
 			break;
 		default:
-			PyErr_SetString(PyExc_ValueError, "Invalid group.");
+			PyErr_SetString(PyExc_ValueError, "invalid group");
 			return NULL;
 	}
 	return PyUnicode_FromStringAndSize(hex_value, pad);
@@ -1106,20 +1102,20 @@ PyObject *Element_mult(PyObject* a, PyObject *b) {
 		} else if (e2->group == Zr) {
 			Element *e3 = (Element *)ElementType.tp_alloc(&ElementType, 0);
 			// note that the result is in the same ring *and pairing*
-			element_init_same_as(e3->pbc_element, e2->pbc_element);
-			e3->group = e2->group;
-			Py_INCREF(e2->pairing);
-			e3->pairing = e2->pairing;
+			element_init_same_as(e3->pbc_element, e1->pbc_element);
+			e3->group = e1->group;
+			Py_INCREF(e1->pairing);
+			e3->pairing = e1->pairing;
 			element_mul_zn(e3->pbc_element, e1->pbc_element, e2->pbc_element);
 			e3->ready = 1;
 			return (PyObject*)e3;
 		} else if (e1->group == Zr) {
 			Element *e3 = (Element *)ElementType.tp_alloc(&ElementType, 0);
 			// note that the result is in the same ring *and pairing*
-			element_init_same_as(e3->pbc_element, e1->pbc_element);
-			e3->group = e1->group;
-			Py_INCREF(e1->pairing);
-			e3->pairing = e1->pairing;
+			element_init_same_as(e3->pbc_element, e2->pbc_element);
+			e3->group = e2->group;
+			Py_INCREF(e2->pairing);
+			e3->pairing = e2->pairing;
 			element_mul_zn(e3->pbc_element, e2->pbc_element, e1->pbc_element);
 			e3->ready = 1;
 			return (PyObject*)e3;
@@ -1155,7 +1151,7 @@ PyObject *Element_mult(PyObject* a, PyObject *b) {
 		e3->ready = 1;
 		return (PyObject*)e3;
 	}
-	PyErr_SetString(PyExc_TypeError, "Arguments must be Element and Element or Element and integer.");
+	PyErr_SetString(PyExc_TypeError, "arguments must be two Elements of the same group, an Element and an Element in Zr, or an Element and an integer");
 	return NULL;
 }
 
