@@ -1,3 +1,5 @@
+#pragma once
+
 // python stuff
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
@@ -7,18 +9,17 @@
 #include <pbc/pbc.h>
 
 /*******************************************************************************
-pypbc.h
-
-Written by Geremy Condra
-Licensed under GPLv3
-Released 11 October 2009
-
-This header contains the declarations for the functions needed to use PBC
-from Python3
+* pypbc.c                                                                      *
+*                                                                              *
+* Modifications by Jemtaly                                                     *
+* Copyright (c) 2024                                                           *
+*                                                                              *
+* Originally written by Geremy Condra                                          *
+* Licensed under GPLv3                                                         *
+* Released 11 October 2009                                                     *
+*                                                                              *
+* This file contains the types and functions needed to use PBC from Python3.   *
 *******************************************************************************/
-
-#ifndef PYPBC_H
-#define PYPBC_H
 
 // we need debugging symbols for compile warnings
 #define PBC_DEBUG
@@ -34,6 +35,7 @@ typedef struct {
     int ready;
 } Parameters;
 
+Parameters *Parameters_create();
 PyObject *Parameters_new(PyTypeObject *type, PyObject *args, PyObject *kwds);
 int Parameters_init(Parameters *self, PyObject *args, PyObject *kwargs);
 void Parameters_dealloc(Parameters *parameter);
@@ -49,10 +51,10 @@ typedef struct {
     int ready;
 } Pairing;
 
+Pairing *Pairing_create();
 PyObject *Pairing_new(PyTypeObject *type, PyObject *args, PyObject *kwargs);
 int Pairing_init(Pairing *self, PyObject *args);
 void Pairing_dealloc(Pairing *pairing);
-PyObject* Pairing_apply(PyObject *self, PyObject *args);
 
 PyMemberDef Pairing_members[];
 PyMethodDef Pairing_methods[];
@@ -67,6 +69,7 @@ typedef struct {
     int ready;
 } Element;
 
+Element *Element_create();
 PyMemberDef Element_members[];
 PyMethodDef Element_methods[];
 PyTypeObject ElementType;
@@ -74,5 +77,3 @@ PyTypeObject ElementType;
 PyObject *Element_new(PyTypeObject *type, PyObject *args, PyObject *kwargs);
 int Element_init(PyObject *self, PyObject *args, PyObject *kwargs);
 void Element_dealloc(Element *element);
-
-#endif
