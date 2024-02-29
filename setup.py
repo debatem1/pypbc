@@ -2,17 +2,19 @@
 
 from distutils.core import setup, Extension
 
-pbc = Extension(	"pypbc",
-				libraries=["pbc"],
-				sources=["pypbc.c"]
-			)
+pbc = Extension(
+    name="pypbc",
+    libraries=["pbc"],
+    sources=["pypbc.c"]
+)
 
-setup(	name="pypbc",
-		version="0.2",
-		description="a simple set of bindings to PBC's interface.",
-		author="Geremy Condra",
-		author_email="debatem1@gmail.com",
-		url="geremycondra.net",
-		py_modules=["test", "KSW"],
-		ext_modules=[pbc]
+setup(
+    name="pypbc",
+    version="0.2",
+    description="a simple set of bindings to PBC's interface.",
+    author="Geremy Condra",
+    author_email="debatem1@gmail.com",
+    url="geremycondra.net",
+    py_modules=["test"],
+    ext_modules=[pbc]
 )

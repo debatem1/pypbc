@@ -1126,11 +1126,10 @@ PyObject *Element_item(PyObject *element_py, Py_ssize_t sz_i) {
     // allocate a buffer for the hex string
     char strbuf[4096];
     // convert the bytes to a hex string
-    sprintf(&strbuf[0], "0x");
     for (int i = 0; i < size; i++) {
-        sprintf(&strbuf[2 * i], "%02X", buffer[i]);
+        sprintf(&strbuf[2*i], "%02X", buffer[i]);
     }
-    strbuf[2 * size] = '\0';
+    strbuf[2*size] = '\0';
     // return the hex string
     return PyLong_FromString(strbuf, NULL, 16);
 }
@@ -1151,11 +1150,10 @@ PyObject *Element_int(PyObject *element_py) {
     // allocate a buffer for the hex string
     char strbuf[4096];
     // convert the bytes to a hex string
-    sprintf(&strbuf[0], "0x");
     for (int i = 0; i < size; i++) {
-        sprintf(&strbuf[2 * i], "%02X", buffer[i]);
+        sprintf(&strbuf[2*i], "%02X", buffer[i]);
     }
-    strbuf[2 * size] = '\0';
+    strbuf[2*size] = '\0';
     // return the hex string
     return PyLong_FromString(strbuf, NULL, 16);
 }
