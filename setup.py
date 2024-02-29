@@ -1,20 +1,15 @@
 #! /usr/bin/env python3
 
-from distutils.core import setup, Extension
+from setuptools import setup, Extension
 
-pbc = Extension(
-    name="pypbc",
-    libraries=["pbc"],
-    sources=["pypbc.c"]
-)
+pypbc_module = Extension("pypbc", sources=["pypbc.c"], libraries=["pbc"])
 
 setup(
     name="pypbc",
-    version="0.2",
+    version="1.0",
     description="a simple set of bindings to PBC's interface.",
-    author="Geremy Condra",
-    author_email="debatem1@gmail.com",
-    url="geremycondra.net",
-    py_modules=["test"],
-    ext_modules=[pbc]
+    author="Jemtaly (original by Geremy Condra)",
+    author_email="Jemtaly@outlook.com",
+    url="github.com/Jemtaly/pypbc",
+    ext_modules=[pypbc_module],
 )
